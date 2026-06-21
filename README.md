@@ -1,180 +1,202 @@
 ![Banner](./docs/images/banner.png)
 
 <div align="center">
-  <div align="center">
 
-[![Stars](https://img.shields.io/github/stars/aws-containers/retail-store-sample-app)](Stars)
-![GitHub License](https://img.shields.io/github/license/aws-containers/retail-store-sample-app?color=green)
-![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Faws-containers%2Fretail-store-sample-app%2Frefs%2Fheads%2Fmain%2F.release-please-manifest.json&query=%24%5B%22.%22%5D&label=release)
-![GitHub Release Date](https://img.shields.io/github/release-date/aws-containers/retail-store-sample-app)
+[![License](https://img.shields.io/github/license/smilekison/microservice-retail?color=green)](https://github.com/smilekison/microservice-retail/blob/main/LICENSE)
+[![Repo Size](https://img.shields.io/github/repo-size/smilekison/microservice-retail)](https://github.com/smilekison/microservice-retail)
+[![Languages](https://img.shields.io/github/languages/count/smilekison/microservice-retail)](https://github.com/smilekison/microservice-retail)
 
-  </div>
 
-  <strong>
-  <h2>AWS Containers Retail Sample</h2>
-  </strong>
-</div>
+## microservice-retail — DevOps-focused README
 
-This is a sample application designed to illustrate various concepts related to containers on AWS. It presents a sample retail store application including a product catalog, shopping cart and checkout.
+A trimmed and DevOps-oriented README for the microservice-retail sample application. This README focuses on deployment, observability, CI/CD, and operational best practices to help platform and SRE teams deploy and run the application reliably.
 
-It provides:
 
-- A demo store-front application with themes, pages to show container and application topology information, generative AI chat bot and utility functions for experimentation and demos.
-- An optional distributed component architecture using various languages and frameworks
-- A variety of different persistence backends for the various components like MariaDB (or MySQL), DynamoDB and Redis
-- The ability to run in different container orchestration technologies like Docker Compose, Kubernetes etc.
-- Pre-built container images for both x86-64 and ARM64 CPU architectures
-- All components instrumented for Prometheus metrics and OpenTelemetry OTLP tracing
-- Support for Istio on Kubernetes
-- Load generator which exercises all of the infrastructure
+---
 
-See the [features documentation](./docs/features.md) for more information.
+### Quick links
 
-**This project is intended for educational purposes only and not for production use**
+- Architecture (animated): /docs/images/animated-architecture.svg
+- Docs: ./docs
+- Terraform modules: ./terraform
+- Helm charts: included in each service directory (where present)
 
-![Screenshot](/docs/images/screenshot.png)
+---
 
-## Application Architecture
+## Goals for DevOps / SRE
 
-The application has been deliberately over-engineered to generate multiple de-coupled components. These components generally have different infrastructure dependencies, and may support multiple "backends" (example: Carts service supports MongoDB or DynamoDB).
+- Reproducible, idempotent infrastructure provisioning (Terraform)
+- Container images built for multi-arch and scanned for vulnerabilities
+- Automated CI/CD pipeline (build, test, image push, deploy) with promotion gates
+- Production-grade observability: metrics (Prometheus), traces (OpenTelemetry), logs (structured JSON)
+- Secure secrets management (HashiCorp Vault / AWS Secrets Manager / SSM)
+- Horizontal autoscaling, resource requests/limits, and readiness/liveness probes
 
-![Architecture](/docs/images/architecture.png)
 
-| Component                  | Language | Container Image                                                             | Helm Chart                                                                        | Description                             |
-| -------------------------- | -------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------- |
-| [UI](./src/ui/)            | Java     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-ui)       | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-ui-chart)       | Store user interface                    |
-| [Catalog](./src/catalog/)  | Go       | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-catalog)  | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-catalog-chart)  | Product catalog API                     |
-| [Cart](./src/cart/)        | Java     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-cart)     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-cart-chart)     | User shopping carts API                 |
-| [Orders](./src/orders)     | Java     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-orders)   | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-orders-chart)   | User orders API                         |
-| [Checkout](./src/checkout) | Node     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-checkout) | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-checkout-chart) | API to orchestrate the checkout process |
+## Animated Architecture
 
-## Quickstart
+![Animated architecture](/docs/images/animated-architecture.svg)
 
-The following sections provide quickstart instructions for various platforms.
 
-### Docker
+## Recommended deployment flows
 
-This deployment method will run the application as a single container on your local machine using `docker`.
+1) Local dev: Docker/Docker Compose — fast iteration
+2) Kubernetes (EKS/GKE/AKS) — staging and production
+3) Managed containers (ECS/Fargate, App Runner) — simple managed deployments
+4) Terraform for infra lifecycle management
 
-Pre-requisites:
 
-- Docker installed locally
+## Quickstart (Dev)
 
-Run the container:
+Prereqs: Docker 24+, Docker Compose v2+, git
+
+Run a UI-only container (quick test):
 
 ```
 docker run -it --rm -p 8888:8080 public.ecr.aws/aws-containers/retail-store-sample-ui:1.0.0
 ```
 
-Open the frontend in a browser window:
+Or run the docker compose stack (uses included compose files):
 
 ```
-http://localhost:8888
+DB_PASSWORD='testing' docker compose -f docker-compose.yaml up --build
 ```
 
-To stop the container in `docker` use Ctrl+C.
-
-### Docker Compose
-
-This deployment method will run the application on your local machine using `docker-compose`.
-
-Pre-requisites:
-
-- Docker installed locally
-
-Download the latest Docker Compose file and use `docker compose` to run the application containers:
+Stop and remove resources:
 
 ```
-wget https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/docker-compose.yaml
-
-DB_PASSWORD='<some password>' docker compose --file docker-compose.yaml up
+docker compose -f docker-compose.yaml down --volumes
 ```
 
-Open the frontend in a browser window:
 
-```
-http://localhost:8888
-```
+## Kubernetes (recommended staging flow)
 
-To stop the containers in `docker compose` use Ctrl+C. To delete all the containers and related resources run:
+Prereqs: kubectl, a K8s cluster (EKS/GKE/AKS), helm
 
-```
-docker compose -f docker-compose.yaml down
-```
-
-### Kubernetes
-
-This deployment method will run the application in an existing Kubernetes cluster.
-
-Pre-requisites:
-
-- Kubernetes cluster
-- `kubectl` installed locally
-
-Use `kubectl` to run the application:
+Apply manifests (example using release artifacts):
 
 ```
 kubectl apply -f https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/kubernetes.yaml
-kubectl wait --for=condition=available deployments --all
+kubectl wait --for=condition=available deployments --all --timeout=180s
 ```
 
-Get the URL for the frontend load balancer like so:
+Get the UI service (LoadBalancer / NodePort):
 
 ```
-kubectl get svc ui
+kubectl get svc ui -o wide
 ```
 
-To remove the application use `kubectl` again:
+Helm (if using charts in repo):
 
 ```
-kubectl delete -f https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/kubernetes.yaml
+helm repo add local-retail https://example.com/charts
+helm upgrade --install retail ./charts/retail -n retail --create-namespace
 ```
 
-### Terraform
 
-The following options are available to deploy the application using Terraform:
+## Terraform (infrastructure-as-code)
 
-| Name                                             | Description                                                                                                     |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| [Amazon EKS](./terraform/eks/default/)           | Deploys the application to Amazon EKS using other AWS services for dependencies, such as RDS, DynamoDB etc.     |
-| [Amazon EKS (Minimal)](./terraform/eks/minimal/) | Deploys the application to Amazon EKS using in-cluster dependencies instead of RDS, DynamoDB etc.               |
-| [Amazon ECS](./terraform/ecs/default/)           | Deploys the application to Amazon ECS using other AWS services for dependencies, such as RDS, DynamoDB etc.     |
-| [AWS App Runner](./terraform/apprunner/)         | Deploys the application to AWS App Runner using other AWS services for dependencies, such as RDS, DynamoDB etc. |
+This repository contains Terraform examples under ./terraform. Use these as starting points and adapt to your org standards (backend state, workspaces, modules, tagging, policies).
 
-## Security
+Example apply (ensure backend configured):
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+```
+cd terraform/eks/default
+terraform init
+terraform plan -out plan.tf
+terraform apply plan.tf
+```
+
+Tip: Use separate state per environment and enable remote state locking.
+
+
+## CI/CD (example GitHub Actions workflow)
+
+Save this as .github/workflows/ci-cd.yaml. It shows a minimal pipeline for build, test, container scan, and deploy to a Kubernetes cluster.
+
+```yaml
+name: CI/CD
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build (maven)
+        run: ./mvnw -B -DskipTests package
+      - name: Build and push images
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/microservice-retail:latest
+      - name: Scan image
+        uses: aquasecurity/trivy-action@v1
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/microservice-retail:latest
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to cluster
+        uses: azure/k8s-deploy@v4
+        with:
+          manifests: | 
+            k8s/*.yaml
+```
+
+Notes:
+- Use image tags by digest for immutable deployments
+- Gate promotions with integration tests and manual approvals for prod
+- Use OIDC or dedicated deploy service accounts for auth
+
+
+## Observability and Monitoring
+
+- Metrics: Prometheus scraping endpoints (all services expose Prometheus metrics)
+- Tracing: OpenTelemetry OTLP exporters are built into services — configure OTLP collector
+- Logs: Output structured JSON (enables ingestion by Loki/Elasticsearch/CloudWatch)
+- Dashboards: Create Grafana dashboards for request latency, error rate, throughput, and resource usage
+
+Example: run prometheus and grafana via Helm in-cluster and configure scraping for the services.
+
+
+## Security & Secrets
+
+- Do NOT store secrets in the repo. Use external secret stores (Vault, AWS Secrets Manager, SSM)
+- Use KMS encryption for state files and secrets at rest
+- Enforce least-privilege IAM roles for services and CI runners
+- Enable dependency scanning in CI (Trivy, Snyk)
+
+
+## Best practices for production readiness
+
+- Add resource requests & limits for all pods
+- Configure readiness and liveness probes
+- Implement circuit-breakers and retries in client calls
+- Enforce network policies and use service mesh where needed
+- Run chaos testing in staging (some services include chaos endpoints for testing)
+
+
+## Troubleshooting
+
+- Pod not starting: kubectl describe pod / kubectl logs
+- High latency: check tracing spans, CPU/Memory throttling, and DB slow queries
+- Data persistence: verify backing services (RDS, DynamoDB, Redis) are reachable
+
+
+## Contributing / Security
+
+See CONTRIBUTING.md for security reporting guidelines.
+
 
 ## License
 
-This project is licensed under the MIT-0 License.
-
-This package depends on and may incorporate or retrieve a number of third-party
-software packages (such as open source packages) at install-time or build-time
-or run-time ("External Dependencies"). The External Dependencies are subject to
-license terms that you must accept in order to use this package. If you do not
-accept all of the applicable license terms, you should not use this package. We
-recommend that you consult your company’s open source approval policy before
-proceeding.
-
-Provided below is a list of External Dependencies and the applicable license
-identification as indicated by the documentation associated with the External
-Dependencies as of Amazon's most recent review.
-
-THIS INFORMATION IS PROVIDED FOR CONVENIENCE ONLY. AMAZON DOES NOT PROMISE THAT
-THE LIST OR THE APPLICABLE TERMS AND CONDITIONS ARE COMPLETE, ACCURATE, OR
-UP-TO-DATE, AND AMAZON WILL HAVE NO LIABILITY FOR ANY INACCURACIES. YOU SHOULD
-CONSULT THE DOWNLOAD SITES FOR THE EXTERNAL DEPENDENCIES FOR THE MOST COMPLETE
-AND UP-TO-DATE LICENSING INFORMATION.
-
-YOUR USE OF THE EXTERNAL DEPENDENCIES IS AT YOUR SOLE RISK. IN NO EVENT WILL
-AMAZON BE LIABLE FOR ANY DAMAGES, INCLUDING WITHOUT LIMITATION ANY DIRECT,
-INDIRECT, CONSEQUENTIAL, SPECIAL, INCIDENTAL, OR PUNITIVE DAMAGES (INCLUDING
-FOR ANY LOSS OF GOODWILL, BUSINESS INTERRUPTION, LOST PROFITS OR DATA, OR
-COMPUTER FAILURE OR MALFUNCTION) ARISING FROM OR RELATING TO THE EXTERNAL
-DEPENDENCIES, HOWEVER CAUSED AND REGARDLESS OF THE THEORY OF LIABILITY, EVEN
-IF AMAZON HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THESE LIMITATIONS
-AND DISCLAIMERS APPLY EXCEPT TO THE EXTENT PROHIBITED BY APPLICABLE LAW.
-
-MariaDB Community License - [LICENSE](https://mariadb.com/kb/en/mariadb-licenses/)
-MySQL Community Edition - [LICENSE](https://github.com/mysql/mysql-server/blob/8.0/LICENSE)
+This project is licensed under the MIT-0 License. See LICENSE for details.
